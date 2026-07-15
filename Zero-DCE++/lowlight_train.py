@@ -34,7 +34,7 @@ def train(config):
 
 	# DCE_net.apply(weights_init)
 	if config.load_pretrain == True:
-	    DCE_net.load_state_dict(torch.load(config.pretrain_dir))
+	    DCE_net.load_state_dict(torch.load(config.pretrain_dir), strict=False)
 	train_dataset = dataloader.lowlight_loader(config.lowlight_images_path)		
 	
 	train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=config.train_batch_size, shuffle=True, num_workers=config.num_workers, pin_memory=True)
@@ -46,6 +46,7 @@ def train(config):
 	L_exp = Myloss.L_exp(16)
 	# L_exp = Myloss.L_exp(16,0.6)
 	L_TV = Myloss.L_TV()
+	L_flare = Myloss.L_flare(config.flare_threshold)
 
 
 	optimizer = torch.optim.Adam(DCE_net.parameters(), lr=config.lr, weight_decay=config.weight_decay)
@@ -57,19 +58,20 @@ def train(config):
 
 			img_lowlight = img_lowlight.cuda()
 
-			E = 0.6
+			E = config.exposure_target
 
-			enhanced_image,A  = DCE_net(img_lowlight)
+			enhanced_image,A,flare_mask,flare_reduced_image  = DCE_net(img_lowlight)
 			Loss_TV = 1600*L_TV(A)
 			# Loss_TV = 200*L_TV(A)			
 			loss_spa = torch.mean(L_spa(enhanced_image, img_lowlight))
-			loss_col = 5*torch.mean(L_color(enhanced_image))
+			loss_col = config.color_loss_weight*torch.mean(L_color(enhanced_image))
 
-			loss_exp = 10*torch.mean(L_exp(enhanced_image,E))
+			loss_exp = config.exposure_loss_weight*torch.mean(L_exp(enhanced_image,E))
+			loss_flare = config.flare_loss_weight*torch.mean(L_flare(enhanced_image, flare_mask, flare_reduced_image))
 
 			
 			# best_loss
-			loss =  Loss_TV + loss_spa + loss_col + loss_exp
+			loss =  Loss_TV + loss_spa + loss_col + loss_exp + loss_flare
 
 
 			
@@ -106,6 +108,11 @@ if __name__ == "__main__":
 	parser.add_argument('--snapshots_folder', type=str, default="snapshots_Zero_DCE++/")
 	parser.add_argument('--load_pretrain', type=bool, default= False)
 	parser.add_argument('--pretrain_dir', type=str, default= "snapshots_Zero_DCE++/Epoch99.pth")
+	parser.add_argument('--color_loss_weight', type=float, default=1.0)
+	parser.add_argument('--exposure_target', type=float, default=0.45)
+	parser.add_argument('--exposure_loss_weight', type=float, default=10.0)
+	parser.add_argument('--flare_loss_weight', type=float, default=1.0)
+	parser.add_argument('--flare_threshold', type=float, default=0.85)
 
 	config = parser.parse_args()
 

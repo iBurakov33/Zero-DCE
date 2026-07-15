@@ -34,9 +34,9 @@ def lowlight(image_path):
 	data_lowlight = data_lowlight.cuda().unsqueeze(0)
 
 	DCE_net = model.enhance_net_nopool(scale_factor).cuda()
-	DCE_net.load_state_dict(torch.load('snapshots_Zero_DCE++/Epoch99.pth'))
+	DCE_net.load_state_dict(torch.load('snapshots_Zero_DCE++/Epoch99.pth'), strict=False)
 	start = time.time()
-	enhanced_image,params_maps = DCE_net(data_lowlight)
+	enhanced_image,params_maps,flare_mask,flare_reduced_image = DCE_net(data_lowlight)
 
 	end_time = (time.time() - start)
 
@@ -47,7 +47,7 @@ def lowlight(image_path):
 	if not os.path.exists(image_path.replace('/'+image_path.split("/")[-1],'')):
 		os.makedirs(image_path.replace('/'+image_path.split("/")[-1],''))
 	# import pdb;pdb.set_trace()
-	torchvision.utils.save_image(enhanced_image, result_path)
+	torchvision.utils.save_image(flare_reduced_image, result_path)
 	return end_time
 
 if __name__ == '__main__':
@@ -59,7 +59,7 @@ if __name__ == '__main__':
 		sum_time = 0
 		for file_name in file_list:
 			test_list = glob.glob(filePath+file_name+"/*") 
-		    for image in test_list:
+			for image in test_list:
 
 				print(image)
 				sum_time = sum_time + lowlight(image)

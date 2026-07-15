@@ -47,7 +47,8 @@ class enhance_net_nopool(nn.Module):
 		self.e_conv4 = CSDN_Tem(number_f,number_f) 
 		self.e_conv5 = CSDN_Tem(number_f*2,number_f) 
 		self.e_conv6 = CSDN_Tem(number_f*2,number_f) 
-		self.e_conv7 = CSDN_Tem(number_f*2,3) 
+		self.e_conv7 = CSDN_Tem(number_f*2,3)
+		self.flare_conv = CSDN_Tem(number_f*2,1)
 
 	def enhance(self, x,x_r):
 
@@ -79,5 +80,14 @@ class enhance_net_nopool(nn.Module):
 			x_r = x_r
 		else:
 			x_r = self.upsample(x_r)
+		decoder_features = torch.cat([x1,x6],1)
+		flare_mask = torch.sigmoid(self.flare_conv(decoder_features))
+		if self.scale_factor!=1:
+			flare_mask = self.upsample(flare_mask)
 		enhance_image = self.enhance(x,x_r)
-		return enhance_image,x_r
+		flare_reduced_image = self.suppress_flare(enhance_image, flare_mask)
+		return enhance_image,x_r,flare_mask,flare_reduced_image
+
+	def suppress_flare(self, image, flare_mask):
+		attenuation = 1.0 - 0.6 * flare_mask
+		return torch.clamp(image * attenuation, 0.0, 1.0)
