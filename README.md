@@ -55,6 +55,12 @@ cd Zero-DCE++
 python lowlight_train.py 
 ```
 
+## Restoration upgrade guide
+
+For guidance on extending Zero-DCE++ beyond low-light enhancement to denoising, defogging, and sun-flare brightness reduction, see [docs/RESTORATION_UPGRADE_PLAN.md](docs/RESTORATION_UPGRADE_PLAN.md).
+
+If outputs look noticeably bluer than the originals, see [docs/BLUE_CAST_TROUBLESHOOTING.md](docs/BLUE_CAST_TROUBLESHOOTING.md) for the likely training-loss cause and mitigation options. The training script now exposes `--color_loss_weight` and `--exposure_target`, and the model includes a flare suppression head that writes flare-reduced outputs during testing.
+
 ##  License
 The code is made available for academic research purpose only. Under Attribution-NonCommercial 4.0 International License.
 

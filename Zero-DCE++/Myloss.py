@@ -156,3 +156,20 @@ class perception_loss(nn.Module):
         h_relu_4_3 = h
         # out = (h_relu_1_2, h_relu_2_2, h_relu_3_3, h_relu_4_3)
         return h_relu_4_3
+class L_flare(nn.Module):
+    def __init__(self, threshold=0.85, mask_scale=20.0):
+        super(L_flare, self).__init__()
+        self.threshold = threshold
+        self.mask_scale = mask_scale
+
+    def forward(self, enhanced, flare_mask, flare_reduced):
+        r,g,b = torch.split(enhanced, 1, dim=1)
+        luma = 0.299*r + 0.587*g + 0.114*b
+        candidate_mask = torch.sigmoid((luma - self.threshold) * self.mask_scale).detach()
+        reduced_luma = torch.mean(flare_reduced, 1, keepdim=True)
+
+        mask_loss = F.binary_cross_entropy(flare_mask, candidate_mask)
+        highlight_loss = torch.mean(candidate_mask * torch.pow(F.relu(reduced_luma - self.threshold), 2))
+        identity_loss = torch.mean((1.0 - candidate_mask) * torch.abs(flare_reduced - enhanced))
+
+        return mask_loss + highlight_loss + identity_loss
